@@ -3,8 +3,15 @@
 #include <ESP8266WebServer.h>
 #include <EEPROM.h>
 #include "index.h"
-#include "pass.h"
+#include "data.h"
 
+//Для прошивки по WiFi
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h> // Библиотека для OTA-прошивки
+
+const char* nameDevice = nameDeviceValue;
+const char* passDevice = passDeviceValue;
 const char* ssid = ssidValue;
 const char* password = passwordValue;
 
@@ -18,42 +25,45 @@ void serverRoot() {
   server.send(200, "text/html", MAIN_page);
 }
 
-void lightAction(bool switchModule) {
-  if(switchModule == 0) {
-    digitalWrite(LED_BUILTIN, LOW);
-    server.send(200, "text/plain", "switch on");
-  } else {
-    digitalWrite(LED_BUILTIN, HIGH);
+void relayAction(bool switchModule) {
+  if (switchModule == 0) {
+    digitalWrite(0, LOW);
+    digitalWrite(2, LOW);
     server.send(200, "text/plain", "switch off");
+  } else {
+    digitalWrite(0, HIGH);
+    digitalWrite(2, HIGH);
+    server.send(200, "text/plain", "switch on");
   }
 }
 
-void lightPage() {
+void relayPage() {
   String value = server.arg("value");
   int activeValue = value.toInt();
-  lightAction(activeValue);
+  relayAction(activeValue);
 }
 
 void metricsPage() {
-  //EEPROM.begin(512);
   int countReboot = EEPROM.read(0);
   String message = "{\n";
   message += "  \"countReboot\": "; message += countReboot; message += "\n";
   message += "}";
-  server.send ( 200, "application/json", message);
+  server.send(200, "application/json", message);
 }
 
-void restartPage(){
-  server.send ( 200, "text/plain", "restart esp");
+void restartPage() {
+  server.send(200, "text/plain", "restart esp");
   ESP.restart();
 }
 
-void fileNotFound(){
+void fileNotFound() {
   server.send(404, "text/plain", "File Not Found");
 }
 
-void setup(void){
-  pinMode(LED_BUILTIN, OUTPUT);
+void setup(void) {
+  pinMode(0, OUTPUT);
+  pinMode(2, OUTPUT);
+
   Serial.begin(115200);
   WiFi.mode(WIFI_STA); //Режим клиента (WIFI_AP - точка доступа, WIFI_AP_STA - оба режима)
   WiFi.begin(ssid, password);
@@ -71,8 +81,13 @@ void setup(void){
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
+  //Для прошивки по WiFi
+  ArduinoOTA.setHostname(nameDevice);     // Задаем имя сетевого порта
+  //ArduinoOTA.setPassword(passDevice);   // Задаем пароль доступа для удаленной прошивки
+  ArduinoOTA.begin();
+
   server.on("/", serverRoot);
-  server.on("/relay", lightPage);
+  server.on("/relay", relayPage);
   server.on("/restart", restartPage);
   server.on("/metrics", metricsPage);
   server.onNotFound(fileNotFound);
@@ -86,6 +101,7 @@ void setup(void){
   EEPROM.commit(); // Сохраняем в памяти
 }
 
-void loop(void){
+void loop(void) {
+  ArduinoOTA.handle();  // Всегда готовы к прошивке
   server.handleClient();
 }
