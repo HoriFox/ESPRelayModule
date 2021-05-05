@@ -30,13 +30,18 @@ void metricsPage() {
         "# TYPE esp_module_reboot gauge\n"
         "# UNIT esp_module_reboot \n"
         "esp_module_reboot %d\n"
-        "# HELP esp_module_compile Device compile date and time.\n"
-        "# TYPE esp_module_compile gauge\n"
-        "# UNIT esp_module_compile \n"
-        "esp_module_compile %s\n";
+        "# HELP esp_module_uptime Device uptime in ms.\n"
+        "# TYPE esp_module_uptime gauge\n"
+        "# UNIT esp_module_uptime \n"
+        "esp_module_uptime %d\n"
+        "# HELP esp_module_info Device info.\n"
+        "# TYPE esp_module_info gauge\n"
+        "# UNIT esp_module_info \n"
+        "esp_module_info{build=\"%s\",date=\"%s\"} 1\n";
   int count_reboot = getROMData(0);
+  long ms = millis();
   char response[BUFSIZE];
-  snprintf(response, BUFSIZE, response_template, count_reboot, compile_date);
+  snprintf(response, BUFSIZE, response_template, count_reboot, ms, BUILD, compile_date);
   server.send(200, "text/plain; charset=utf-8", response);
 }
 

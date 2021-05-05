@@ -1,0 +1,12 @@
+#!/bin/sh
+# Redirect output to stderr.
+exec 1>&2
+
+PREV_HASH=$(git log -1 --pretty="%h")
+DATE=$(date +"%s")
+BRANCH=$(git symbolic-ref -q HEAD)
+BRANCH=${BRANCH##refs/heads/}
+BRANCH=${BRANCH:-HEAD} # 'HEAD' indicates detached HEAD situation
+echo "#pragma once" > version.h
+echo "#define BUILD \"${PREV_HASH}-${BRANCH}-${DATE}\"" >> version.h 
+git add version.h
