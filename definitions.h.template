@@ -1,10 +1,12 @@
 // Main configuration
-#define SERIAL_BAUD 115200
 #define WIFI_SSID   "WIFI_SSID"
 #define WIFI_PASS   "WIFI_PASS"
 #define CONTROL_PIN 0
 // Comment BUTTON_PIN to disable button logic
 #define BUTTON_PIN  2
+
+#define SERIAL_BAUD 115200
+#define EEPROM_SIZE 512
 
 // Over-the-air programming
 #define ENABLE_OTA

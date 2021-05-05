@@ -2,74 +2,17 @@
 #include "definitions.h"
 
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <EEPROM.h>
+// May be useful for discovery service
+//#include <WiFiUdp.h>
+//#include <WiFiClient.h>
 
 // Over-the-air programming
 #ifdef ENABLE_OTA
 #include <ArduinoOTA.h>
 #endif
 
-// Web-pages
-#include "index.h"
-
-// May be useful for discovery service
-//#include <WiFiUdp.h>
-//#include <WiFiClient.h>
-
-ESP8266WebServer server(80);
-bool currentStage = false;
-#ifdef BUTTON_PIN
-bool isYetChangeStage = false;
-#endif
-
-void serverRoot() {
-  server.send(200, "text/html", MAIN_page);
-}
-
-void relayAction(bool switchModule) {
-  if (switchModule == 0) {
-    currentStage = false;
-    digitalWrite(CONTROL_PIN, LOW);
-    server.send(200, "text/plain", "switch off");
-  } else {
-    currentStage = true;
-    digitalWrite(CONTROL_PIN, HIGH);
-    server.send(200, "text/plain", "switch on");
-  }
-}
-
-void relayPage() {
-  String value = server.arg("value");
-  int activeValue = value.toInt();
-  relayAction(activeValue);
-}
-
-void metricsPage() {
-  int countReboot = EEPROM.read(0);
-  String message = "{\n";
-  message += "  \"countReboot\": "; message += countReboot; message += "\n";
-  message += "}";
-  server.send(200, "application/json", message);
-}
-
-void restartPage() {
-  server.send(200, "text/plain", "restart esp");
-  ESP.restart();
-}
-
-void fileNotFound() {
-  server.send(404, "text/plain", "File Not Found");
-}
-
-void setupServer() {
-  server.on("/", serverRoot);
-  server.on("/relay", relayPage);
-  server.on("/restart", restartPage);
-  server.on("/metrics", metricsPage);
-  server.onNotFound(fileNotFound);
-  server.begin();
-}
+#include "rom.h"
+#include "server.h"
 
 void setup(void) {
   pinMode(CONTROL_PIN, OUTPUT);
@@ -110,25 +53,13 @@ void setup(void) {
   ArduinoOTA.begin();
 #endif
 
+  initROM();
   setupServer();
   Serial.println("HTTP server started");
-
-  // Init EEPROM
-  EEPROM.begin(512);
-  int countReboot = EEPROM.read(0); // Get current reboot count
-  EEPROM.write(0, countReboot + 1); // Update reboot count
-  EEPROM.commit();                  // Save to ROM
 }
 
-void loop(void) {
-#ifdef ENABLE_OTA
-  // Over-the-air programming handling, always listen
-  ArduinoOTA.handle();
-#endif
-  // Listen & serve HTTP requests
-  server.handleClient();
-
 #ifdef BUTTON_PIN
+void handleButtonPress() {
   int buttonState = digitalRead(BUTTON_PIN);
   if (buttonState == LOW && isYetChangeStage) {
     relayAction(!currentStage);
@@ -137,5 +68,19 @@ void loop(void) {
   if (buttonState == HIGH) {
     isYetChangeStage = true;
   }
+}
+#endif
+
+void loop(void) {
+#ifdef ENABLE_OTA
+  // Over-the-air programming handling, always listen
+  ArduinoOTA.handle();
+#endif
+
+  // Listen & serve HTTP requests
+  handleRequests();
+
+#ifdef BUTTON_PIN
+  handleButtonPress();
 #endif
 }
