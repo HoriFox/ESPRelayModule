@@ -11,8 +11,10 @@
 
 ESP8266WebServer server(80);
 bool currentStage = false;
+
 #ifdef BUTTON_PIN
 bool isYetChangeStage = false;
+void handleButtonPress();
 #endif
 
 void serverRoot();

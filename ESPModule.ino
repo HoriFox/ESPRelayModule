@@ -58,19 +58,6 @@ void setup(void) {
   Serial.println("HTTP server started");
 }
 
-#ifdef BUTTON_PIN
-void handleButtonPress() {
-  int buttonState = digitalRead(BUTTON_PIN);
-  if (buttonState == LOW && isYetChangeStage) {
-    relayAction(!currentStage);
-    isYetChangeStage = false;
-  }
-  if (buttonState == HIGH) {
-    isYetChangeStage = true;
-  }
-}
-#endif
-
 void loop(void) {
 #ifdef ENABLE_OTA
   // Over-the-air programming handling, always listen

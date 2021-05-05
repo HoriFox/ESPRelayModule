@@ -1,5 +1,16 @@
 #include "server.h"
 
+void handleButtonPress() {
+  int buttonState = digitalRead(BUTTON_PIN);
+  if (buttonState == LOW && isYetChangeStage) {
+    relayAction(!currentStage);
+    isYetChangeStage = false;
+  }
+  if (buttonState == HIGH) {
+    isYetChangeStage = true;
+  }
+}
+
 void serverRoot() {
   server.send(200, "text/html", MAIN_page);
 }
