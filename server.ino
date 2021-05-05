@@ -23,11 +23,21 @@ void relayPage() {
 }
 
 void metricsPage() {
-  int countReboot = getROMData(0);
-  String message = "{\n";
-  message += "  \"countReboot\": "; message += countReboot; message += "\n";
-  message += "}";
-  server.send(200, "application/json", message);
+  static const size_t BUFSIZE = 1024;
+  static const char compile_date[] = __DATE__ " " __TIME__;
+  static const char *response_template =
+        "# HELP esp_module_reboot Device reboot count.\n"
+        "# TYPE esp_module_reboot gauge\n"
+        "# UNIT esp_module_reboot \n"
+        "esp_module_reboot %d\n"
+        "# HELP esp_module_compile Device compile date and time.\n"
+        "# TYPE esp_module_compile gauge\n"
+        "# UNIT esp_module_compile \n"
+        "esp_module_compile %s\n";
+  int count_reboot = getROMData(0);
+  char response[BUFSIZE];
+  snprintf(response, BUFSIZE, response_template, count_reboot, compile_date);
+  server.send(200, "text/plain; charset=utf-8", response);
 }
 
 void restartPage() {
