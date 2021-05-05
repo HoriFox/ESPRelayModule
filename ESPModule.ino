@@ -20,6 +20,8 @@ const char* password = passwordValue;
 //IPAddress subnet(255,255,255,0);
 
 ESP8266WebServer server(80);
+bool currentStage = false;
+bool isYetChangeStage = false;
 
 void serverRoot() {
   server.send(200, "text/html", MAIN_page);
@@ -27,12 +29,12 @@ void serverRoot() {
 
 void relayAction(bool switchModule) {
   if (switchModule == 0) {
+    currentStage = false;
     digitalWrite(0, LOW);
-    digitalWrite(2, LOW);
     server.send(200, "text/plain", "switch off");
   } else {
+    currentStage = true;
     digitalWrite(0, HIGH);
-    digitalWrite(2, HIGH);
     server.send(200, "text/plain", "switch on");
   }
 }
@@ -62,7 +64,8 @@ void fileNotFound() {
 
 void setup(void) {
   pinMode(0, OUTPUT);
-  pinMode(2, OUTPUT);
+  pinMode(2, INPUT);
+//  pinMode(2, OUTPUT);
 
   Serial.begin(115200);
   WiFi.mode(WIFI_STA); //Режим клиента (WIFI_AP - точка доступа, WIFI_AP_STA - оба режима)
@@ -104,4 +107,12 @@ void setup(void) {
 void loop(void) {
   ArduinoOTA.handle();  // Всегда готовы к прошивке
   server.handleClient();
+  int io2value = digitalRead(2);
+  if (io2value == 0 && !isYetChangeStage) {
+    relayAction(!currentStage);
+    isYetChangeStage = true;
+  }
+  if (io2value == 1) {
+    isYetChangeStage = false;
+  }
 }
