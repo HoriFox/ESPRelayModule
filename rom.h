@@ -6,6 +6,6 @@
 #include <EEPROM.h>
 
 void initROM();
-int getROMData(int index);
+uint32_t getROMData(size_t index);
 
 #endif // ROM_H

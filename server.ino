@@ -49,8 +49,8 @@ void metricsPage() {
         "# TYPE esp_module_info gauge\n"
         "# UNIT esp_module_info \n"
         "esp_module_info{build=\"%s\",date=\"%s\"} 1\n";
-  int count_reboot = getROMData(0);
-  long ms = millis();
+  uint32_t count_reboot = getROMData(0);
+  uint32_t ms = millis();
   char response[BUFSIZE];
   snprintf(response, BUFSIZE, response_template, count_reboot, ms, BUILD, compile_date);
   server.send(200, "text/plain; charset=utf-8", response);
