@@ -1,107 +1,73 @@
+// Constants
+#include "definitions.h"
+
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <EEPROM.h>
-#include "index.h"
-#include "data.h"
+// May be useful for discovery service
+//#include <WiFiUdp.h>
+//#include <WiFiClient.h>
 
-//Для прошивки по WiFi
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h> // Библиотека для OTA-прошивки
+// Over-the-air programming
+#ifdef ENABLE_OTA
+#include <ArduinoOTA.h>
+#endif
 
-const char* nameDevice = nameDeviceValue;
-const char* passDevice = passDeviceValue;
-const char* ssid = ssidValue;
-const char* password = passwordValue;
-
-//IPAddress ip(192,168,1,20);  // Статический IP
-//IPAddress gateway(192,168,1,1);
-//IPAddress subnet(255,255,255,0);
-
-ESP8266WebServer server(80);
-
-void serverRoot() {
-  server.send(200, "text/html", MAIN_page);
-}
-
-void relayAction(bool switchModule) {
-  if (switchModule == 0) {
-    digitalWrite(0, LOW);
-    digitalWrite(2, LOW);
-    server.send(200, "text/plain", "switch off");
-  } else {
-    digitalWrite(0, HIGH);
-    digitalWrite(2, HIGH);
-    server.send(200, "text/plain", "switch on");
-  }
-}
-
-void relayPage() {
-  String value = server.arg("value");
-  int activeValue = value.toInt();
-  relayAction(activeValue);
-}
-
-void metricsPage() {
-  int countReboot = EEPROM.read(0);
-  String message = "{\n";
-  message += "  \"countReboot\": "; message += countReboot; message += "\n";
-  message += "}";
-  server.send(200, "application/json", message);
-}
-
-void restartPage() {
-  server.send(200, "text/plain", "restart esp");
-  ESP.restart();
-}
-
-void fileNotFound() {
-  server.send(404, "text/plain", "File Not Found");
-}
+#include "rom.h"
+#include "server.h"
 
 void setup(void) {
-  pinMode(0, OUTPUT);
-  pinMode(2, OUTPUT);
+  pinMode(CONTROL_PIN, OUTPUT);
+#ifdef BUTTON_PIN
+  pinMode(BUTTON_PIN, INPUT);
+#endif
 
-  Serial.begin(115200);
-  WiFi.mode(WIFI_STA); //Режим клиента (WIFI_AP - точка доступа, WIFI_AP_STA - оба режима)
-  WiFi.begin(ssid, password);
-  //WiFi.config(ip, gateway, subnet); //Ставим статический адрес
-  Serial.println("");
+  Serial.begin(SERIAL_BAUD);
 
-  // Ждём соединения
+  // WIFI_STA - client mode
+  // WIFI_AP - access point mode
+  // WIFI_AP_STA - mixed mode
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+#ifdef ENABLE_STATIC_IP
+  IPAddress ip(WIFI_STATIC_IP);
+  IPAddress gateway(WIFI_STATIC_GW);
+  IPAddress subnet(WIFI_STATIC_MASK);
+  WiFi.config(ip, gateway, subnet);
+#endif
+
+  // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(ssid);
+  Serial.println();
+  Serial.print("Connected to: ");
+  Serial.println(WIFI_SSID);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  //Для прошивки по WiFi
-  ArduinoOTA.setHostname(nameDevice);     // Задаем имя сетевого порта
-  //ArduinoOTA.setPassword(passDevice);   // Задаем пароль доступа для удаленной прошивки
+#ifdef ENABLE_OTA
+  // Over-the-air programming setup
+  ArduinoOTA.setHostname(DEVICE_NAME);
+  ArduinoOTA.setPassword(DEVICE_PASS);
   ArduinoOTA.begin();
+#endif
 
-  server.on("/", serverRoot);
-  server.on("/relay", relayPage);
-  server.on("/restart", restartPage);
-  server.on("/metrics", metricsPage);
-  server.onNotFound(fileNotFound);
-  server.begin();
+  initROM();
+  setupServer();
   Serial.println("HTTP server started");
-
-  // Инициализируем EEPROM
-  EEPROM.begin(512);
-  int countReboot = EEPROM.read(0); // Получаем количество перезапусков
-  EEPROM.write(0, countReboot + 1); // Записываем в память количество перезапусков модуля
-  EEPROM.commit(); // Сохраняем в памяти
 }
 
 void loop(void) {
-  ArduinoOTA.handle();  // Всегда готовы к прошивке
-  server.handleClient();
+#ifdef ENABLE_OTA
+  // Over-the-air programming handling, always listen
+  ArduinoOTA.handle();
+#endif
+
+  // Listen & serve HTTP requests
+  handleRequests();
+
+#ifdef BUTTON_PIN
+  handleButtonPress();
+#endif
 }
