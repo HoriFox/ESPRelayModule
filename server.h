@@ -18,7 +18,7 @@ void handleButtonPress();
 #endif
 
 void serverRoot();
-void relayAction(bool switchModule);
+void relayAction(bool switchModule, bool isLocalChange);
 void relayPage();
 void metricsPage();
 void restartPage();

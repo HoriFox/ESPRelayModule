@@ -3,7 +3,7 @@
 void handleButtonPress() {
   int buttonState = digitalRead(BUTTON_PIN);
   if (buttonState == LOW && isYetChangeStage) {
-    relayAction(!currentStage);
+    relayAction(!currentStage, true);
     isYetChangeStage = false;
   }
   if (buttonState == HIGH) {
@@ -15,22 +15,29 @@ void serverRoot() {
   server.send(200, "text/html", MAIN_page);
 }
 
-void relayAction(bool switchModule) {
+// isLocalChange - изменения реле локальны (с кнопки) или удалённы (из админ-панели)
+// нет смысла отправлять ответы, если локальны, тем более это приведёт к подвисанию сервера
+void relayAction(bool switchModule, bool isLocalChange) {
   if (switchModule == 0) {
     currentStage = false;
     digitalWrite(CONTROL_PIN, LOW);
-    server.send(200, "text/plain", "switch off");
+    if (!isLocalChange) {
+      server.send(200, "text/plain", "switch off");
+    }
   } else {
     currentStage = true;
     digitalWrite(CONTROL_PIN, HIGH);
-    server.send(200, "text/plain", "switch on");
+    if (!isLocalChange) {
+      server.send(200, "text/plain", "switch on");
+    }
   }
+  delay(DELAY_SWITCH);
 }
 
 void relayPage() {
   String value = server.arg("value");
   int activeValue = value.toInt();
-  relayAction(activeValue);
+  relayAction(activeValue, false);
 }
 
 void metricsPage() {
